@@ -1,0 +1,18 @@
+{
+  "name": "MAK BOX — Personel",
+  "short_name": "MAK Personel",
+  "description": "MAK BOX Personel POS Sistemi",
+  "start_url": "/staff/",
+  "scope": "/staff/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d0d0d",
+  "theme_color": "#E53935",
+  "lang": "tr",
+  "icons": [
+    { "src": "/pwa/icons/icon-staff-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/pwa/icons/icon-staff-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["business", "food"],
+  "prefer_related_applications": false
+}

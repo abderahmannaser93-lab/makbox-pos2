@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: makbox-pos
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: TABLE_COUNT
+        value: "12"
+    autoDeploy: true

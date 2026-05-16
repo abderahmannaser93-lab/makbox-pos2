@@ -1,0 +1,17 @@
+{
+  "name": "MAK BOX — Yönetici",
+  "short_name": "MAK Yönetici",
+  "description": "MAK BOX Yönetici Paneli",
+  "start_url": "/manager/",
+  "scope": "/manager/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d0d0d",
+  "theme_color": "#E53935",
+  "lang": "tr",
+  "icons": [
+    { "src": "/pwa/icons/icon-manager-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/pwa/icons/icon-manager-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "prefer_related_applications": false
+}

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAK BOX POS — Uygulama Merkezi</title>
+<meta name="theme-color" content="#D32F2F">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: #111;
+    color: #f0f0f0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HERO */
+  .hero {
+    background: linear-gradient(160deg, #D32F2F 0%, #7B0000 100%);
+    padding: 48px 24px 36px;
+    text-align: center;
+  }
+  .hero-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 52px;
+    letter-spacing: 6px;
+    color: #fff;
+    text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .hero-sub {
+    font-size: 13px;
+    color: rgba(255,255,255,0.75);
+    margin-top: 6px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 30px;
+    padding: 5px 16px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #fff;
+    margin-top: 14px;
+    letter-spacing: 1px;
+  }
+
+  /* APPS GRID */
+  .apps-section { padding: 28px 20px; flex: 1; }
+  .apps-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: #666;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  .apps-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* APP CARD */
+  .app-card {
+    background: #1a1a1a;
+    border: 2px solid #252525;
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-decoration: none;
+    color: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    transition: border-color .2s, transform .15s;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-card:active { transform: scale(.96); }
+  .app-card.customer { border-color: #D32F2F; }
+  .app-card.staff    { border-color: #FF6F00; }
+  .app-card.kitchen  { border-color: #00C853; }
+  .app-card.manager  { border-color: #2196F3; }
+
+  .app-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+  }
+  .app-card.customer::before { background: #D32F2F; }
+  .app-card.staff::before    { background: #FF6F00; }
+  .app-card.kitchen::before  { background: #00C853; }
+  .app-card.manager::before  { background: #2196F3; }
+
+  .app-icon {
+    width: 60px; height: 60px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+  }
+  .app-card.customer .app-icon { background: rgba(211,47,47,0.2); }
+  .app-card.staff    .app-icon { background: rgba(255,111,0,0.2); }
+  .app-card.kitchen  .app-icon { background: rgba(0,200,83,0.2); }
+  .app-card.manager  .app-icon { background: rgba(33,150,243,0.2); }
+
+  .app-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-align: center;
+  }
+  .app-desc {
+    font-size: 10px;
+    color: #666;
+    text-align: center;
+    line-height: 1.4;
+  }
+  .app-open-btn {
+    width: 100%;
+    border: none;
+    border-radius: 8px;
+    padding: 8px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .app-card.customer .app-open-btn { background: #D32F2F; color: #fff; }
+  .app-card.staff    .app-open-btn { background: #FF6F00; color: #000; }
+  .app-card.kitchen  .app-open-btn { background: #00C853; color: #000; }
+  .app-card.manager  .app-open-btn { background: #2196F3; color: #fff; }
+
+  /* INSTALL INSTRUCTIONS */
+  .install-section {
+    background: #161616;
+    border-top: 1px solid #242424;
+    padding: 24px 20px;
+  }
+  .install-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: #666;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .install-tabs {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-bottom: 16px;
+  }
+  .install-tab {
+    background: #252525;
+    border: 2px solid #333;
+    border-radius: 20px;
+    padding: 6px 16px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #666;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .install-tab.active { background: #D32F2F; border-color: #D32F2F; color: #fff; }
+
+  .install-steps { max-width: 440px; margin: 0 auto; }
+  .install-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 1px solid #222;
+  }
+  .install-step:last-child { border-bottom: none; }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #D32F2F;
+    color: #fff;
+    font-weight: 900;
+    font-size: 13px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .step-text { font-size: 13px; color: #ccc; line-height: 1.5; }
+  .step-text strong { color: #fff; }
+  .step-icon { font-size: 16px; }
+
+  /* TABLE CONFIG */
+  .config-section {
+    padding: 24px 20px;
+    max-width: 480px;
+    margin: 0 auto;
+    width: 100%;
+  }
+  .config-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 2px;
+    color: #666;
+    margin-bottom: 14px;
+    text-align: center;
+  }
+  .table-selector {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  .table-btn {
+    background: #1a1a1a;
+    border: 2px solid #282828;
+    border-radius: 10px;
+    padding: 10px;
+    font-weight: 800;
+    font-size: 13px;
+    color: #ccc;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+  }
+  .table-btn.selected { background: rgba(211,47,47,0.2); border-color: #D32F2F; color: #fff; }
+  .open-table-btn {
+    width: 100%;
+    background: #D32F2F;
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    padding: 14px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+  .open-table-btn:disabled { opacity: .4; pointer-events: none; }
+
+  /* FOOTER */
+  footer {
+    text-align: center;
+    padding: 20px;
+    color: #444;
+    font-size: 11px;
+    border-top: 1px solid #1e1e1e;
+  }
+
+  /* Status indicator */
+  .server-status {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 12px; font-weight: 700; margin-top: 16px;
+  }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+  .status-dot.online { background: #00C853; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.4;} }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-logo">🍝 MAK BOX</div>
+  <div class="hero-sub">Restoran POS Sistemi</div>
+  <div class="hero-badge">📱 Progressive Web App — v2.0</div>
+  <div class="server-status">
+    <div class="status-dot" id="statusDot"></div>
+    <span id="statusText">Sunucu kontrol ediliyor...</span>
+  </div>
+</div>
+
+<!-- APPS GRID -->
+<div class="apps-section">
+  <div class="apps-title">UYGULAMALAR</div>
+  <div class="apps-grid">
+
+    <div class="app-card customer" onclick="openApp('customer')">
+      <div class="app-icon">🍝</div>
+      <div class="app-name">MÜŞTERİ SİPARİŞ</div>
+      <div class="app-desc">Kiosk modu<br>Masa bazlı sipariş</div>
+      <button class="app-open-btn">AÇ →</button>
+    </div>
+
+    <div class="app-card staff" onclick="openApp('staff')">
+      <div class="app-icon">📋</div>
+      <div class="app-name">PERSONEL POS</div>
+      <div class="app-desc">Sipariş yönetimi<br>Masa durumu</div>
+      <button class="app-open-btn">AÇ →</button>
+    </div>
+
+    <div class="app-card kitchen" onclick="openApp('kitchen')">
+      <div class="app-icon">🍳</div>
+      <div class="app-name">MUTFAK EKRANI</div>
+      <div class="app-desc">Canlı siparişler<br>Durum güncelleme</div>
+      <button class="app-open-btn">AÇ →</button>
+    </div>
+
+    <div class="app-card manager" onclick="openApp('manager')">
+      <div class="app-icon">📊</div>
+      <div class="app-name">YÖNETİCİ</div>
+      <div class="app-desc">Günlük rapor<br>Satış analizi</div>
+      <button class="app-open-btn">AÇ →</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- TABLE SELECTOR (for customer kiosk) -->
+<div class="config-section">
+  <div class="config-title">MÜŞTERİ TABLETI — MASA SEÇ</div>
+  <div class="table-selector" id="tableGrid"></div>
+  <button class="open-table-btn" id="openTableBtn" disabled onclick="openCustomerTable()">
+    MASA UYGULAMASINI AÇ
+  </button>
+</div>
+
+<!-- INSTALL INSTRUCTIONS -->
+<div class="install-section">
+  <div class="install-title">📱 TELEFONA YÜKLE</div>
+  <div class="install-tabs">
+    <div class="install-tab active" onclick="showOS('android', this)">Android</div>
+    <div class="install-tab" onclick="showOS('ios', this)">iPhone / iPad</div>
+  </div>
+
+  <div class="install-steps" id="androidSteps">
+    <div class="install-step">
+      <div class="step-num">1</div>
+      <div class="step-text"><span class="step-icon">🌐</span> Chrome tarayıcısında bu sayfayı açın</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">2</div>
+      <div class="step-text">Sağ üst köşedeki <strong>⋮ menüye</strong> dokunun</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>"Ana ekrana ekle"</strong> seçeneğine tıklayın</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">4</div>
+      <div class="step-text"><strong>"Yükle"</strong> düğmesine basın — uygulama ana ekrana eklenir ✅</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">5</div>
+      <div class="step-text">Her tablet için aynı adımları tekrarlayın, farklı masa numarası seçin</div>
+    </div>
+  </div>
+
+  <div class="install-steps" id="iosSteps" style="display:none">
+    <div class="install-step">
+      <div class="step-num">1</div>
+      <div class="step-text"><span class="step-icon">🌐</span> <strong>Safari</strong> tarayıcısında bu sayfayı açın (Chrome desteklemiyor)</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">2</div>
+      <div class="step-text">Alt çubuktaki <strong>paylaş simgesine</strong> <span class="step-icon">⬆️</span> dokunun</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">3</div>
+      <div class="step-text"><strong>"Ana Ekrana Ekle"</strong> seçeneğine dokunun</div>
+    </div>
+    <div class="install-step">
+      <div class="step-num">4</div>
+      <div class="step-text">Sağ üstteki <strong>"Ekle"</strong> düğmesine basın ✅</div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  MAK BOX POS v2.0 · Fiyatlar 23.01.2026 tarihlidir
+</footer>
+
+<script>
+const SERVER = window.location.origin;
+let selectedTable = null;
+
+// ── CHECK SERVER STATUS ──────────────────────────────────────────────────────
+async function checkServer() {
+  try {
+    const r = await fetch(`${SERVER}/api/health`);
+    if (r.ok) {
+      document.getElementById('statusDot').classList.add('online');
+      document.getElementById('statusText').textContent = 'Sunucu çevrimiçi ✓';
+    } else throw new Error();
+  } catch {
+    document.getElementById('statusDot').style.background = '#E53935';
+    document.getElementById('statusText').textContent = 'Sunucuya bağlanılamıyor';
+  }
+}
+checkServer();
+
+// ── LOAD TABLE COUNT FROM SERVER ─────────────────────────────────────────────
+async function loadTables() {
+  try {
+    const r    = await fetch(`${SERVER}/api/tables`);
+    const data = await r.json();
+    const grid = document.getElementById('tableGrid');
+    grid.innerHTML = data.map(t => `
+      <div class="table-btn" onclick="selectTable(${t.id}, this)">
+        ${t.id}
+      </div>`).join('');
+  } catch {
+    // Fallback: show 12 tables
+    const grid = document.getElementById('tableGrid');
+    grid.innerHTML = Array.from({length:12},(_,i)=>`
+      <div class="table-btn" onclick="selectTable(${i+1}, this)">${i+1}</div>`).join('');
+  }
+}
+loadTables();
+
+function selectTable(id, el) {
+  selectedTable = id;
+  document.querySelectorAll('.table-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('openTableBtn').disabled = false;
+  document.getElementById('openTableBtn').textContent = `MASA ${id} — SİPARİŞ EKRANINI AÇ`;
+}
+
+function openCustomerTable() {
+  if (!selectedTable) return;
+  window.open(`${SERVER}/customer/?table=${selectedTable}`, '_blank');
+}
+
+// ── OPEN APP ─────────────────────────────────────────────────────────────────
+function openApp(type) {
+  const paths = { customer: '/customer/', staff: '/staff/', kitchen: '/kitchen/', manager: '/manager/' };
+  if (type === 'customer' && selectedTable) {
+    window.open(`${SERVER}/customer/?table=${selectedTable}`, '_blank');
+  } else {
+    window.open(SERVER + paths[type], '_blank');
+  }
+}
+
+// ── OS TABS ──────────────────────────────────────────────────────────────────
+function showOS(os, btn) {
+  document.querySelectorAll('.install-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('androidSteps').style.display = os === 'android' ? 'block' : 'none';
+  document.getElementById('iosSteps').style.display     = os === 'ios'     ? 'block' : 'none';
+}
+
+// ── PWA INSTALL ──────────────────────────────────────────────────────────────
+let _installEvt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _installEvt = e;
+  const btn = document.createElement('button');
+  btn.textContent = '📲 Uygulamayı Telefona Yükle';
+  btn.style.cssText = 'display:block;width:calc(100% - 40px);max-width:480px;margin:16px auto 0;background:#D32F2F;color:#fff;border:none;border-radius:12px;padding:14px;font-family:\'Nunito\',sans-serif;font-weight:900;font-size:15px;cursor:pointer;';
+  btn.onclick = async () => {
+    _installEvt.prompt();
+    const { outcome } = await _installEvt.userChoice;
+    if (outcome === 'accepted') btn.textContent = '✅ Yüklendi!';
+    _installEvt = null;
+  };
+  document.querySelector('.hero').appendChild(btn);
+});
+</script>
+</body>
+</html>

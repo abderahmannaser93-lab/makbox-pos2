@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>MAK BOX — Sipariş</title>
+
+<!-- PWA -->
+<link rel="manifest" href="/pwa/manifest-customer.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAK BOX">
+<meta name="theme-color" content="#D32F2F">
+<meta name="description" content="MAK BOX Makarna Restoran Sipariş Sistemi">
+
+<!-- Apple Touch Icons -->
+<link rel="apple-touch-icon" href="/pwa/icons/icon-192.png">
+<link rel="apple-touch-icon" sizes="152x152" href="/pwa/icons/icon-152.png">
+<link rel="apple-touch-icon" sizes="144x144" href="/pwa/icons/icon-144.png">
+
+<!-- Splash screens (iOS) -->
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+
+<!-- Open Graph -->
+<meta property="og:title" content="MAK BOX — Sipariş">
+<meta property="og:description" content="MAK BOX Makarna Restoran Sipariş Sistemi">
+<meta property="og:type" content="website">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap');
+
+  :root {
+    --red:    #D32F2F;
+    --red2:   #B71C1C;
+    --gold:   #FFC107;
+    --dark:   #111111;
+    --dark2:  #1a1a1a;
+    --card:   #212121;
+    --border: #2e2e2e;
+    --text:   #f0f0f0;
+    --muted:  #888;
+    --green:  #2ecc71;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--dark);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--red);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  }
+  .header-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+  .header-table {
+    background: rgba(0,0,0,0.3);
+    padding: 6px 16px;
+    border-radius: 30px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .cart-btn {
+    background: var(--gold);
+    color: #000;
+    border: none;
+    border-radius: 30px;
+    padding: 8px 18px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: transform .15s;
+  }
+  .cart-btn:active { transform: scale(.95); }
+  .cart-count {
+    background: var(--red);
+    color: #fff;
+    border-radius: 50%;
+    width: 20px; height: 20px;
+    font-size: 11px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900;
+  }
+
+  /* WELCOME BANNER */
+  .welcome {
+    background: linear-gradient(135deg, var(--red) 0%, var(--red2) 100%);
+    margin: 16px;
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+  }
+  .welcome h1 { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; }
+  .welcome p  { font-size: 13px; opacity: .85; margin-top: 4px; }
+
+  /* CATEGORY TABS */
+  .cats {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .cats::-webkit-scrollbar { display: none; }
+  .cat-btn {
+    flex-shrink: 0;
+    background: var(--card);
+    border: 2px solid var(--border);
+    color: var(--muted);
+    border-radius: 30px;
+    padding: 8px 18px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all .2s;
+    white-space: nowrap;
+  }
+  .cat-btn.active {
+    background: var(--red);
+    border-color: var(--red);
+    color: #fff;
+  }
+
+  /* MENU GRID */
+  .menu-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    padding: 0 16px 100px;
+  }
+
+  .item-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 2px solid var(--border);
+    transition: border-color .2s, transform .15s;
+    cursor: pointer;
+    position: relative;
+  }
+  .item-card:active { transform: scale(.97); }
+  .item-card.in-cart { border-color: var(--red); }
+
+  .item-badge {
+    position: absolute;
+    top: 8px; left: 8px;
+    font-size: 9px;
+    font-weight: 900;
+    padding: 3px 8px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    z-index: 1;
+  }
+  .badge-best-seller { background: var(--gold); color: #000; }
+  .badge-new         { background: var(--green); color: #000; }
+
+  .item-img {
+    width: 100%; height: 80px;
+    background: var(--dark2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 36px;
+  }
+  .item-body { padding: 10px; }
+  .item-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 15px;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
+    color: #fff;
+  }
+  .item-desc {
+    font-size: 10px;
+    color: var(--muted);
+    margin: 3px 0 6px;
+    line-height: 1.3;
+  }
+  .item-price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .item-price {
+    color: var(--red);
+    font-weight: 900;
+    font-size: 14px;
+  }
+  .add-btn {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* SECTION HEADER */
+  .section-header {
+    grid-column: 1/-1;
+    padding: 8px 0 4px;
+    border-bottom: 2px solid var(--red);
+    margin-bottom: 4px;
+  }
+  .section-header h2 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    color: var(--red);
+  }
+  .section-header small { color: var(--muted); font-size: 11px; }
+
+  /* MODAL OVERLAY */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    display: flex; align-items: flex-end;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+
+  /* ITEM DETAIL MODAL */
+  .modal {
+    background: var(--dark2);
+    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.16,1,.3,1);
+  }
+  .overlay.open .modal { transform: translateY(0); }
+
+  .modal-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .modal-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 26px; letter-spacing: 1px;
+  }
+  .modal-close {
+    background: var(--border);
+    border: none; border-radius: 50%;
+    width: 34px; height: 34px;
+    cursor: pointer; color: var(--text);
+    font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .modal-desc { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+  /* SIZE SELECTOR */
+  .size-section label {
+    display: block; font-weight: 700; font-size: 13px; margin-bottom: 8px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .size-btns { display: flex; gap: 10px; margin-bottom: 16px; }
+  .size-btn {
+    flex: 1;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    cursor: pointer;
+    text-align: center;
+    transition: all .2s;
+    color: var(--text);
+  }
+  .size-btn.active { border-color: var(--red); background: rgba(211,47,47,0.15); }
+  .size-btn .size-name { font-weight: 800; font-size: 14px; }
+  .size-btn .size-price { color: var(--red); font-size: 16px; font-weight: 900; margin-top: 4px; }
+
+  /* EXTRAS */
+  .extras-section label {
+    display: block; font-weight: 700; font-size: 13px; margin-bottom: 8px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 1px;
+  }
+  .extras-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+  .extra-chip {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    padding: 8px 10px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 11px;
+    transition: all .2s;
+    color: var(--text);
+  }
+  .extra-chip.active { border-color: var(--red); background: rgba(211,47,47,0.1); }
+  .extra-chip .extra-name { font-weight: 700; }
+  .extra-chip .extra-price { color: var(--red); font-weight: 800; }
+
+  /* QTY + NOTE */
+  .qty-row {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+  }
+  .qty-label { font-weight: 700; color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; flex: 1; }
+  .qty-ctrl { display: flex; align-items: center; gap: 10px; }
+  .qty-btn {
+    background: var(--card); border: 2px solid var(--border);
+    border-radius: 50%; width: 34px; height: 34px;
+    cursor: pointer; color: var(--text); font-size: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900;
+  }
+  .qty-num { font-size: 20px; font-weight: 900; min-width: 24px; text-align: center; }
+
+  .note-input {
+    width: 100%;
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    color: var(--text);
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    resize: none;
+    margin-bottom: 16px;
+  }
+  .note-input:focus { outline: none; border-color: var(--red); }
+  .note-input::placeholder { color: var(--muted); }
+
+  .modal-total {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--card);
+    border-radius: var(--radius);
+  }
+  .modal-total span { color: var(--muted); font-weight: 700; }
+  .modal-total strong { font-size: 22px; color: var(--red); font-weight: 900; }
+
+  .modal-add-btn {
+    width: 100%;
+    background: var(--red);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: background .2s, transform .15s;
+  }
+  .modal-add-btn:active { background: var(--red2); transform: scale(.98); }
+
+  /* CART MODAL */
+  .cart-modal {
+    background: var(--dark2);
+    border-radius: var(--radius) var(--radius) 0 0;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 20px;
+    transform: translateY(100%);
+    transition: transform .3s cubic-bezier(.16,1,.3,1);
+  }
+  .overlay.open .cart-modal { transform: translateY(0); }
+
+  .cart-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 2px;
+    margin-bottom: 16px;
+  }
+
+  .cart-item {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-bottom: 10px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .cart-item-info { flex: 1; }
+  .cart-item-name { font-weight: 800; font-size: 14px; }
+  .cart-item-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .cart-item-price { font-weight: 900; color: var(--red); font-size: 15px; white-space: nowrap; }
+  .cart-item-remove {
+    background: none; border: none;
+    color: var(--muted); font-size: 18px;
+    cursor: pointer; padding: 0 4px;
+  }
+
+  .cart-total-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0;
+    border-top: 2px solid var(--border);
+    margin-top: 8px; margin-bottom: 16px;
+  }
+  .cart-total-label { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--muted); }
+  .cart-total-val   { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); }
+
+  .order-note-wrap { margin-bottom: 16px; }
+  .order-note-wrap label { display: block; font-weight: 700; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+
+  .confirm-btn {
+    width: 100%;
+    background: var(--green);
+    color: #000;
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: transform .15s;
+    margin-bottom: 10px;
+  }
+  .confirm-btn:active { transform: scale(.98); }
+  .confirm-btn:disabled { opacity: .5; pointer-events: none; }
+
+  .waiter-btn {
+    width: 100%;
+    background: var(--card);
+    border: 2px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius);
+    padding: 12px;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  /* BOTTOM CART BAR */
+  .bottom-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--dark2);
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    display: flex; gap: 12px; align-items: center;
+    z-index: 99;
+    transform: translateY(100%);
+    transition: transform .3s;
+  }
+  .bottom-bar.visible { transform: translateY(0); }
+  .bottom-bar-info { flex: 1; }
+  .bottom-bar-items { font-size: 12px; color: var(--muted); }
+  .bottom-bar-total { font-size: 18px; font-weight: 900; color: var(--gold); }
+  .bottom-bar-btn {
+    background: var(--red);
+    color: #fff; border: none;
+    border-radius: var(--radius);
+    padding: 12px 20px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 1px;
+    cursor: pointer;
+  }
+
+  /* SUCCESS */
+  .success-screen {
+    position: fixed; inset: 0;
+    background: var(--dark);
+    z-index: 300;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 40px;
+    transform: scale(.9); opacity: 0; pointer-events: none;
+    transition: all .4s cubic-bezier(.16,1,.3,1);
+  }
+  .success-screen.show { transform: scale(1); opacity: 1; pointer-events: all; }
+  .success-icon { font-size: 80px; margin-bottom: 20px; }
+  .success-title { font-family: 'Bebas Neue', sans-serif; font-size: 38px; letter-spacing: 3px; color: var(--green); margin-bottom: 10px; }
+  .success-sub { color: var(--muted); font-size: 15px; line-height: 1.6; }
+  .success-back {
+    margin-top: 30px;
+    background: var(--red);
+    color: #fff; border: none;
+    border-radius: var(--radius);
+    padding: 14px 36px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px;
+    letter-spacing: 2px;
+    cursor: pointer;
+  }
+
+  /* Extras category label */
+  .extras-cat-label {
+    grid-column: 1/-1;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-top: 4px;
+  }
+
+  .single-price {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .single-price .sp-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; }
+  .single-price .sp-val { font-size: 28px; font-weight: 900; color: var(--gold); margin-top: 4px; }
+
+  .empty-cart { text-align: center; padding: 40px 20px; color: var(--muted); }
+  .empty-cart p { font-size: 14px; margin-top: 10px; }
+
+  .menule-kazan {
+    background: linear-gradient(135deg, #1a2a1a, #0d1a0d);
+    border: 2px solid var(--green);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    grid-column: 1/-1;
+    font-size: 12px;
+    color: var(--green);
+    font-weight: 700;
+    text-align: center;
+  }
+  .menule-kazan strong { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo">MAK BOX</div>
+  <div class="header-table" id="tableLabel">Masa —</div>
+  <button class="cart-btn" onclick="openCart()">
+    🛒 Sepet
+    <div class="cart-count" id="cartCount">0</div>
+  </button>
+</div>
+
+<!-- WELCOME -->
+<div class="welcome">
+  <h1>HOŞ GELDİNİZ</h1>
+  <p>Menüyü inceleyin ve siparişinizi verin</p>
+</div>
+
+<!-- CATEGORIES -->
+<div class="cats" id="catTabs"></div>
+
+<!-- MENU ITEMS -->
+<div class="menu-grid" id="menuGrid"></div>
+
+<!-- BOTTOM CART BAR -->
+<div class="bottom-bar" id="bottomBar">
+  <div class="bottom-bar-info">
+    <div class="bottom-bar-items" id="bottomBarItems"></div>
+    <div class="bottom-bar-total" id="bottomBarTotal"></div>
+  </div>
+  <button class="bottom-bar-btn" onclick="openCart()">SİPARİŞ VER →</button>
+</div>
+
+<!-- ITEM DETAIL OVERLAY -->
+<div class="overlay" id="itemOverlay" onclick="closeOverlayOnBg(event,'itemOverlay')">
+  <div class="modal" id="itemModal"></div>
+</div>
+
+<!-- CART OVERLAY -->
+<div class="overlay" id="cartOverlay" onclick="closeOverlayOnBg(event,'cartOverlay')">
+  <div class="cart-modal" id="cartModal"></div>
+</div>
+
+<!-- SUCCESS SCREEN -->
+<div class="success-screen" id="successScreen">
+  <div class="success-icon">✅</div>
+  <div class="success-title">SİPARİŞ ALINDI!</div>
+  <div class="success-sub" id="successSub"></div>
+  <button class="success-back" onclick="closeSuccess()">MENÜYE DÖN</button>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const SERVER = window.location.origin;
+const params = new URLSearchParams(window.location.search);
+const TABLE_ID = parseInt(params.get('table') || params.get('tableId') || '1');
+
+document.getElementById('tableLabel').textContent = `Masa ${TABLE_ID}`;
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let MENU = null;
+let cart = []; // [{itemId, itemName, size, sizeLabel, quantity, unitPrice, extras, extrasDetail, note, lineTotal}]
+let activeCat = null;
+
+// Selected state for modal
+let sel = { item: null, size: null, qty: 1, extras: [], note: '' };
+
+// ─── SOCKET ──────────────────────────────────────────────────────────────────
+const socket = io(SERVER, { query: { role: 'customer', tableId: TABLE_ID } });
+socket.on('connect',    ()  => console.log('socket ok'));
+socket.on('order:update', (o) => { if (o.tableId === TABLE_ID) showOrderUpdate(o); });
+
+// ─── LOAD MENU ───────────────────────────────────────────────────────────────
+async function loadMenu() {
+  try {
+    const r = await fetch(`${SERVER}/api/menu`);
+    MENU = await r.json();
+    renderCats();
+    activeCat = MENU.categories[0].id;
+    renderMenu();
+  } catch(e) {
+    document.getElementById('menuGrid').innerHTML = '<p style="color:red;padding:20px">Menü yüklenemedi. Sunucu bağlantısını kontrol edin.</p>';
+  }
+}
+
+// ─── RENDER CATEGORIES ────────────────────────────────────────────────────────
+function renderCats() {
+  const el = document.getElementById('catTabs');
+  el.innerHTML = MENU.categories.map(c =>
+    `<button class="cat-btn ${c.id === activeCat ? 'active' : ''}" onclick="selectCat('${c.id}')">${c.name}</button>`
+  ).join('');
+}
+
+function selectCat(id) {
+  activeCat = id;
+  renderCats();
+  renderMenu();
+  document.getElementById('menuGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── RENDER MENU ─────────────────────────────────────────────────────────────
+function getCatEmoji(catId) {
+  const map = { special:'🌟', gurme:'👑', makbox:'📦', yeniler:'🆕', icecekler:'🥤', tatli:'🍮' };
+  return map[catId] || '🍝';
+}
+
+function priceLabel(item) {
+  const sizes = item.sizes;
+  if (sizes.tek) return `${sizes.tek} ₺`;
+  if (sizes.orta && sizes.buyuk) return `${sizes.orta} ₺`;
+  if (sizes.orta) return `${sizes.orta} ₺`;
+  return '';
+}
+
+function isInCart(itemId) { return cart.some(c => c.itemId === itemId); }
+
+function renderMenu() {
+  const grid = document.getElementById('menuGrid');
+  const items = MENU.items.filter(i => i.category === activeCat);
+  const cat   = MENU.categories.find(c => c.id === activeCat);
+
+  let html = `<div class="section-header"><h2>${cat?.name || ''}</h2><small>${cat?.nameEn || ''}</small></div>`;
+
+  // MENÜLE KAZAN promo (boxes only)
+  if (['special','gurme','makbox','yeniler'].includes(activeCat)) {
+    html += `<div class="menule-kazan">🎁 <strong>MENÜLE KAZAN +250₺</strong> — Makbox Limonata ekle!</div>`;
+  }
+
+  items.forEach(item => {
+    const badgeHtml = item.badge === 'best-seller'
+      ? `<div class="item-badge badge-best-seller">⭐ BEST SELLER</div>`
+      : item.badge === 'new'
+      ? `<div class="item-badge badge-new">🆕 YENİ</div>`
+      : '';
+
+    html += `
+    <div class="item-card ${isInCart(item.id) ? 'in-cart' : ''}" onclick="openItem('${item.id}')">
+      ${badgeHtml}
+      <div class="item-img">${getCatEmoji(item.category)}</div>
+      <div class="item-body">
+        <div class="item-name">${item.name}</div>
+        <div class="item-desc">${item.desc || item.descEn || '&nbsp;'}</div>
+        <div class="item-price-row">
+          <div class="item-price">${priceLabel(item)}</div>
+          <button class="add-btn" onclick="event.stopPropagation();openItem('${item.id}')">+ Ekle</button>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  grid.innerHTML = html;
+}
+
+// ─── ITEM DETAIL MODAL ────────────────────────────────────────────────────────
+function openItem(itemId) {
+  const item = MENU.items.find(i => i.id === itemId);
+  if (!item) return;
+  sel = { item, size: null, qty: 1, extras: [], note: '' };
+
+  // Auto-select first available size
+  const sizeKeys = Object.keys(item.sizes).filter(k => item.sizes[k] !== null);
+  if (sizeKeys.length === 1) sel.size = sizeKeys[0];
+
+  renderItemModal();
+  document.getElementById('itemOverlay').classList.add('open');
+}
+
+function closeItem() { document.getElementById('itemOverlay').classList.remove('open'); }
+
+function renderItemModal() {
+  const item = sel.item;
+  const sizeKeys = Object.keys(item.sizes).filter(k => item.sizes[k] !== null);
+  const isSingle = sizeKeys.length === 1 && sizeKeys[0] === 'tek';
+
+  let sizesHtml = '';
+  if (isSingle) {
+    sizesHtml = `
+      <div class="single-price">
+        <div class="sp-label">Fiyat</div>
+        <div class="sp-val">${item.sizes.tek} ₺</div>
+      </div>`;
+    sel.size = 'tek';
+  } else {
+    sizesHtml = `
+      <div class="size-section">
+        <label>Boyut Seçin</label>
+        <div class="size-btns">
+          ${sizeKeys.map(k => `
+            <div class="size-btn ${sel.size === k ? 'active' : ''}" onclick="selectSize('${k}')">
+              <div class="size-name">${k === 'orta' ? 'ORTA' : 'BÜYÜK'}</div>
+              <div class="size-price">${item.sizes[k]} ₺</div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+
+  const extrasHtml = MENU.extras.length ? `
+    <div class="extras-section">
+      <label>Ekstra (isteğe bağlı)</label>
+      <div class="extras-grid">
+        ${MENU.extras.map(e => `
+          <div class="extra-chip ${sel.extras.includes(e.id) ? 'active' : ''}" onclick="toggleExtra('${e.id}')">
+            <span class="extra-name">${e.name}</span>
+            <span class="extra-price">+${e.price}₺</span>
+          </div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const lineTotal = calcLineTotal();
+
+  document.getElementById('itemModal').innerHTML = `
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">${item.name}</div>
+        ${item.badge === 'best-seller' ? '<span style="font-size:11px;background:#FFC107;color:#000;padding:2px 8px;border-radius:20px;font-weight:800">⭐ BEST SELLER</span>' : ''}
+        ${item.badge === 'new' ? '<span style="font-size:11px;background:#2ecc71;color:#000;padding:2px 8px;border-radius:20px;font-weight:800">🆕 YENİ</span>' : ''}
+      </div>
+      <button class="modal-close" onclick="closeItem()">✕</button>
+    </div>
+    ${item.desc ? `<div class="modal-desc">🇹🇷 ${item.desc}</div>` : ''}
+    ${item.descEn ? `<div class="modal-desc" style="margin-top:-8px">🇬🇧 ${item.descEn}</div>` : ''}
+    ${sizesHtml}
+    ${extrasHtml}
+    <div class="qty-row">
+      <div class="qty-label">Adet</div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty(-1)">−</button>
+        <div class="qty-num" id="qtyNum">${sel.qty}</div>
+        <button class="qty-btn" onclick="changeQty(1)">+</button>
+      </div>
+    </div>
+    <textarea class="note-input" rows="2" placeholder="Not ekleyin (ör: acısız, az tuz...)" oninput="sel.note=this.value">${sel.note}</textarea>
+    <div class="modal-total">
+      <span>Toplam:</span>
+      <strong id="modalTotal">${lineTotal} ₺</strong>
+    </div>
+    <button class="modal-add-btn" onclick="addToCart()">SEPETE EKLE →</button>
+  `;
+}
+
+function selectSize(k) {
+  sel.size = k;
+  updateModalTotal();
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+}
+
+function toggleExtra(eid) {
+  const idx = sel.extras.indexOf(eid);
+  if (idx === -1) sel.extras.push(eid);
+  else sel.extras.splice(idx, 1);
+  updateModalTotal();
+  document.querySelectorAll('.extra-chip').forEach(c => {
+    const id = c.getAttribute('onclick').match(/'([^']+)'/)[1];
+    c.classList.toggle('active', sel.extras.includes(id));
+  });
+}
+
+function changeQty(delta) {
+  sel.qty = Math.max(1, Math.min(20, sel.qty + delta));
+  document.getElementById('qtyNum').textContent = sel.qty;
+  updateModalTotal();
+}
+
+function calcLineTotal() {
+  if (!sel.item || !sel.size) return 0;
+  const base = sel.item.sizes[sel.size] || 0;
+  const extrasSum = sel.extras.reduce((s, eid) => {
+    const ex = MENU.extras.find(e => e.id === eid);
+    return s + (ex?.price || 0);
+  }, 0);
+  return (base + extrasSum) * sel.qty;
+}
+
+function updateModalTotal() {
+  const el = document.getElementById('modalTotal');
+  if (el) el.textContent = calcLineTotal() + ' ₺';
+}
+
+function addToCart() {
+  if (!sel.size) { alert('Lütfen boyut seçin!'); return; }
+  const item = sel.item;
+  const extrasDetail = sel.extras.map(eid => {
+    const ex = MENU.extras.find(e => e.id === eid);
+    return { id: eid, name: ex.name, price: ex.price };
+  });
+  const sizeLabel = sel.size === 'orta' ? 'ORTA' : sel.size === 'buyuk' ? 'BÜYÜK' : '';
+  cart.push({
+    itemId:      item.id,
+    itemName:    item.name,
+    size:        sel.size,
+    sizeLabel,
+    quantity:    sel.qty,
+    unitPrice:   item.sizes[sel.size],
+    extras:      [...sel.extras],
+    extrasDetail,
+    note:        sel.note,
+    lineTotal:   calcLineTotal(),
+  });
+  closeItem();
+  updateCartUI();
+}
+
+// ─── CART ─────────────────────────────────────────────────────────────────────
+function openCart() {
+  renderCartModal();
+  document.getElementById('cartOverlay').classList.add('open');
+}
+function closeCart() { document.getElementById('cartOverlay').classList.remove('open'); }
+
+function renderCartModal() {
+  const total = cart.reduce((s, c) => s + c.lineTotal, 0);
+  const el = document.getElementById('cartModal');
+
+  if (cart.length === 0) {
+    el.innerHTML = `
+      <div class="modal-header">
+        <div class="cart-title">🛒 SEPETİNİZ</div>
+        <button class="modal-close" onclick="closeCart()">✕</button>
+      </div>
+      <div class="empty-cart">🛒<p>Sepetiniz boş.<br>Menüden ürün ekleyin.</p></div>
+    `;
+    return;
+  }
+
+  el.innerHTML = `
+    <div class="modal-header">
+      <div class="cart-title">🛒 SEPETİNİZ</div>
+      <button class="modal-close" onclick="closeCart()">✕</button>
+    </div>
+    ${cart.map((c, i) => `
+      <div class="cart-item">
+        <div class="cart-item-info">
+          <div class="cart-item-name">${c.quantity}× ${c.itemName} ${c.sizeLabel ? `(${c.sizeLabel})` : ''}</div>
+          ${c.extrasDetail.length ? `<div class="cart-item-meta">+ ${c.extrasDetail.map(e=>e.name).join(', ')}</div>` : ''}
+          ${c.note ? `<div class="cart-item-meta" style="color:#aaa">📝 ${c.note}</div>` : ''}
+        </div>
+        <div class="cart-item-price">${c.lineTotal} ₺</div>
+        <button class="cart-item-remove" onclick="removeCartItem(${i})">✕</button>
+      </div>`).join('')}
+    <div class="cart-total-row">
+      <div class="cart-total-label">TOPLAM</div>
+      <div class="cart-total-val">${total} ₺</div>
+    </div>
+    <div class="order-note-wrap">
+      <label>Genel Not</label>
+      <textarea class="note-input" rows="2" id="orderNote" placeholder="Genel sipariş notu..."></textarea>
+    </div>
+    <button class="confirm-btn" onclick="placeOrder()" id="confirmBtn">
+      ✅ SİPARİŞİ ONAYLA (${total} ₺)
+    </button>
+    <button class="waiter-btn" onclick="callWaiter()">🔔 Garson Çağır</button>
+  `;
+}
+
+function removeCartItem(idx) {
+  cart.splice(idx, 1);
+  updateCartUI();
+  renderCartModal();
+}
+
+function updateCartUI() {
+  const total = cart.reduce((s, c) => s + c.lineTotal, 0);
+  const count = cart.reduce((s, c) => s + c.quantity, 0);
+  document.getElementById('cartCount').textContent = count;
+  const bar = document.getElementById('bottomBar');
+  if (count > 0) {
+    bar.classList.add('visible');
+    document.getElementById('bottomBarItems').textContent = `${count} ürün`;
+    document.getElementById('bottomBarTotal').textContent = `${total} ₺`;
+  } else {
+    bar.classList.remove('visible');
+  }
+  renderMenu(); // refresh in-cart highlights
+}
+
+// ─── PLACE ORDER ──────────────────────────────────────────────────────────────
+async function placeOrder() {
+  if (cart.length === 0) return;
+  const btn = document.getElementById('confirmBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Gönderiliyor...'; }
+
+  const orderNote = document.getElementById('orderNote')?.value || '';
+
+  const payload = {
+    tableId: TABLE_ID,
+    note:    orderNote,
+    items:   cart.map(c => ({
+      itemId:   c.itemId,
+      size:     c.size,
+      quantity: c.quantity,
+      extras:   c.extras,
+      note:     c.note,
+    })),
+  };
+
+  try {
+    const r = await fetch(`${SERVER}/api/orders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!r.ok) throw new Error((await r.json()).error || 'Hata');
+    const order = await r.json();
+    cart = [];
+    updateCartUI();
+    closeCart();
+    showSuccess(order);
+  } catch(e) {
+    alert(`Sipariş gönderilemedi: ${e.message}`);
+    if (btn) { btn.disabled = false; btn.textContent = '✅ SİPARİŞİ ONAYLA'; }
+  }
+}
+
+function showSuccess(order) {
+  document.getElementById('successSub').innerHTML = `
+    Siparişiniz mutfağa iletildi!<br>
+    <strong style="color:#2ecc71">Sipariş No: ${order.id}</strong><br><br>
+    Hazırlandığında size haber vereceğiz. 🍝
+  `;
+  document.getElementById('successScreen').classList.add('show');
+  setTimeout(closeSuccess, 8000);
+}
+
+function closeSuccess() {
+  document.getElementById('successScreen').classList.remove('show');
+}
+
+function showOrderUpdate(order) {
+  const msgs = { preparing:'🔥 Siparişiniz hazırlanıyor!', ready:'✅ Siparişiniz hazır!' };
+  if (msgs[order.status]) {
+    // Simple toast
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#2ecc71;color:#000;padding:12px 24px;border-radius:30px;font-weight:800;z-index:999;font-size:14px';
+    toast.textContent = msgs[order.status];
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 4000);
+  }
+}
+
+function callWaiter() {
+  socket.emit('call:waiter', { tableId: TABLE_ID });
+  const btn = document.querySelector('.waiter-btn');
+  if (btn) { btn.textContent = '✅ Garson çağırıldı!'; btn.disabled = true; setTimeout(() => { btn.textContent = '🔔 Garson Çağır'; btn.disabled = false; }, 5000); }
+}
+
+function closeOverlayOnBg(e, id) {
+  if (e.target.id === id) document.getElementById(id).classList.remove('open');
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+loadMenu();
+
+// ── SERVICE WORKER ──────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' });
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+            const b = document.createElement('div');
+            b.style.cssText = 'position:fixed;top:70px;left:16px;right:16px;z-index:9999;background:#1976D2;color:#fff;border-radius:12px;padding:12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+            b.innerHTML = '<span>🔄</span><div style="flex:1;font-size:13px;font-weight:700">Güncelleme hazır!</div><button onclick="location.reload()" style="background:#fff;color:#1976D2;border:none;border-radius:8px;padding:6px 12px;font-weight:900;cursor:pointer">GÜNCELLE</button>';
+            document.body.appendChild(b);
+          }
+        });
+      });
+    } catch(e) { console.warn('[SW]', e.message); }
+  });
+}
+
+// ── INSTALL PROMPT ──────────────────────────────────────────────────────────
+let _installEvt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); _installEvt = e;
+  const b = document.createElement('div');
+  b.id = 'pwaInstall';
+  b.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;z-index:9998;background:#D32F2F;color:#fff;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+  b.innerHTML = '<span style="font-size:24px">📱</span><div style="flex:1"><div style="font-weight:900;font-size:13px">Uygulamayı Yükle</div><div style="font-size:11px;opacity:.85">Ana ekrana ekle!</div></div><button onclick="(async()=>{if(_installEvt){_installEvt.prompt();_installEvt=null;}document.getElementById('pwaInstall')?.remove();})()" style="background:#fff;color:#D32F2F;border:none;border-radius:8px;padding:8px 14px;font-weight:900;font-size:12px;cursor:pointer">YÜKLE</button><button onclick="this.parentElement.remove()" style="background:none;border:none;color:#fff;font-size:20px;cursor:pointer">✕</button>';
+  document.body.appendChild(b);
+});
+window.addEventListener('appinstalled', () => document.getElementById('pwaInstall')?.remove());
+
+</script>
+</body>
+</html>

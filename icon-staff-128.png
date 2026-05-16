@@ -1,0 +1,5 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128' viewBox='0 0 128 128'>
+  <rect width='128' height='128' rx='23' fill='#B71C1C'/>
+  <text x='50%' y='67' text-anchor='middle' dominant-baseline='middle' font-size='49' font-family='serif'>📋</text>
+  <text x='50%' y='115' text-anchor='middle' font-size='15' font-weight='bold' fill='white' font-family='Arial,sans-serif'>PERSONEL</text>
+</svg>

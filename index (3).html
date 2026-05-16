@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAK BOX — Staff System</title>
+<!-- PWA -->
+<link rel="manifest" href="/pwa/manifest-staff.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAK Personel">
+<meta name="theme-color" content="#E53935">
+<link rel="apple-touch-icon" href="/pwa/icons/icon-192.png">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@700&display=swap');
+
+  :root {
+    --bg:      #0d0d0d;
+    --card:    #161616;
+    --card2:   #1e1e1e;
+    --border:  #282828;
+    --red:     #E53935;
+    --orange:  #FF6F00;
+    --green:   #00C853;
+    --gold:    #FFD600;
+    --blue:    #2196F3;
+    --text:    #f0f0f0;
+    --muted:   #666;
+    --radius:  10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    background: var(--card);
+    border-bottom: 3px solid var(--red);
+    padding: 10px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+    gap: 16px;
+  }
+  .topbar-logo { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 3px; color: var(--red); }
+  .topbar-tab {
+    background: none; border: none; color: var(--muted);
+    font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 13px;
+    padding: 8px 16px; border-radius: 30px; cursor: pointer;
+    transition: all .2s; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .topbar-tab.active { background: var(--red); color: #fff; }
+  .topbar-right { display: flex; align-items: center; gap: 14px; }
+  .topbar-clock { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--gold); }
+  .logout-btn { background: var(--border); border: none; border-radius: 20px; padding: 6px 14px; color: var(--muted); font-size: 12px; cursor: pointer; font-weight: 700; }
+
+  /* MAIN LAYOUT */
+  .main {
+    flex: 1; display: flex; overflow: hidden;
+  }
+
+  /* TABS */
+  .tab-panel { display: none; flex: 1; overflow: hidden; }
+  .tab-panel.active { display: flex; }
+
+  /* ── TABLES TAB ── */
+  .tables-panel { flex-direction: column; }
+  .tables-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 14px;
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .table-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    border: 2px solid var(--border);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color .2s, transform .15s;
+    text-align: center;
+  }
+  .table-card:active { transform: scale(.97); }
+  .table-card.free          { border-color: var(--border); }
+  .table-card.occupied      { border-color: var(--orange); }
+  .table-card.bill-requested { border-color: var(--red); animation: flashBorder 1s infinite; }
+  @keyframes flashBorder { 0%,100%{ border-color:var(--red); } 50%{ border-color:#333; } }
+  .table-card.free .table-status-badge          { background: #1a2a1a; color: var(--green); }
+  .table-card.occupied .table-status-badge      { background: #2a1e00; color: var(--orange); }
+  .table-card.bill-requested .table-status-badge { background: #2a0000; color: var(--red); }
+  .table-num { font-family: 'Bebas Neue', sans-serif; font-size: 36px; color: var(--text); }
+  .table-status-badge { font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px; display: inline-block; margin: 6px 0; text-transform: uppercase; letter-spacing: 1px; }
+  .table-meta { font-size: 11px; color: var(--muted); }
+  .table-total { font-size: 15px; font-weight: 900; color: var(--gold); margin-top: 6px; }
+
+  /* ── ORDERS TAB ── */
+  .orders-panel { flex: 1; flex-direction: row; overflow: hidden; }
+  .orders-list {
+    width: 340px; flex-shrink: 0;
+    border-right: 2px solid var(--border);
+    overflow-y: auto;
+    background: var(--card);
+  }
+  .orders-list-header {
+    padding: 14px 16px;
+    border-bottom: 2px solid var(--border);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 2px; color: var(--muted);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .status-filter {
+    display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); overflow-x: auto;
+  }
+  .filter-btn {
+    background: var(--card2); border: 2px solid var(--border); color: var(--muted);
+    border-radius: 20px; padding: 4px 12px; font-size: 11px; font-weight: 800;
+    cursor: pointer; white-space: nowrap; transition: all .2s;
+    font-family: 'Nunito', sans-serif;
+  }
+  .filter-btn.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+  .order-row {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    transition: background .15s;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .order-row:hover { background: var(--card2); }
+  .order-row.selected { background: rgba(229,57,53,0.1); border-left: 3px solid var(--red); }
+  .order-row-top { display: flex; align-items: center; justify-content: space-between; }
+  .order-row-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+  .order-row-table { font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
+  .order-row-status {
+    font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .status-new       { background: rgba(229,57,53,0.2); color: var(--red); }
+  .status-preparing { background: rgba(255,111,0,0.2); color: var(--orange); }
+  .status-ready     { background: rgba(0,200,83,0.2); color: var(--green); }
+  .status-paid      { background: rgba(255,255,255,0.08); color: var(--muted); }
+  .order-row-meta { font-size: 11px; color: var(--muted); display: flex; justify-content: space-between; }
+  .order-row-total { font-weight: 800; color: var(--gold); font-size: 13px; }
+
+  /* ORDER DETAIL */
+  .order-detail {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .detail-placeholder {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 16px; text-align: center;
+  }
+  .detail-header {
+    display: flex; align-items: flex-start; justify-content: space-between;
+  }
+  .detail-title { font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px; }
+  .detail-sub { color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+  .detail-items {
+    background: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .detail-item {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .detail-item:last-child { border-bottom: none; }
+  .di-qty { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); min-width: 32px; }
+  .di-info { flex: 1; }
+  .di-name { font-weight: 800; font-size: 14px; }
+  .di-size { font-size: 11px; color: var(--muted); }
+  .di-extras { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .di-note { font-size: 11px; color: var(--orange); margin-top: 2px; }
+  .di-price { font-weight: 900; color: var(--gold); font-size: 14px; white-space: nowrap; }
+
+  .detail-note-block {
+    background: rgba(255,111,0,0.08);
+    border-left: 3px solid var(--orange);
+    border-radius: 6px; padding: 10px 14px;
+    font-size: 13px; color: var(--orange);
+  }
+
+  .detail-total-row {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .detail-total-label { font-family: 'Bebas Neue', sans-serif; font-size: 20px; color: var(--muted); }
+  .detail-total-val   { font-family: 'Bebas Neue', sans-serif; font-size: 28px; color: var(--gold); }
+
+  .detail-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .action-btn {
+    flex: 1; min-width: 120px;
+    border: none; border-radius: var(--radius);
+    padding: 12px; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 1px;
+    transition: opacity .2s, transform .15s;
+  }
+  .action-btn:active { transform: scale(.97); }
+  .action-btn:disabled { opacity: .4; pointer-events: none; }
+  .btn-prep  { background: var(--orange); color: #000; }
+  .btn-ready { background: var(--green);  color: #000; }
+  .btn-paid  { background: var(--blue);   color: #fff; }
+  .btn-print { background: var(--card2);  color: var(--text); border: 2px solid var(--border); font-size: 14px; }
+  .btn-call  { background: var(--card2);  color: var(--gold);  border: 2px solid var(--border); font-size: 14px; }
+
+  /* WAITER CALLS */
+  .waiter-alert {
+    position: fixed; top: 70px; right: 20px;
+    background: var(--red); color: #fff;
+    border-radius: var(--radius); padding: 12px 20px;
+    font-weight: 800; font-size: 14px;
+    z-index: 500; animation: slideInRight .3s ease;
+    cursor: pointer;
+  }
+  @keyframes slideInRight {
+    from { transform: translateX(120%); }
+    to   { transform: translateX(0); }
+  }
+
+  /* LOGIN */
+  .login-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 999;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-box {
+    background: var(--card); border: 2px solid var(--border);
+    border-radius: 16px; padding: 40px; width: 360px;
+  }
+  .login-box h2 { font-family: 'Bebas Neue', sans-serif; font-size: 26px; color: var(--red); margin-bottom: 6px; }
+  .login-box p  { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+  .login-box input {
+    width: 100%; background: #0a0a0a; border: 2px solid var(--border);
+    border-radius: 8px; padding: 12px; color: var(--text);
+    font-size: 14px; margin-bottom: 10px; font-family: 'Nunito', sans-serif;
+  }
+  .login-box input:focus { outline: none; border-color: var(--red); }
+  .login-box button {
+    width: 100%; background: var(--red); color: #fff; border: none;
+    border-radius: 8px; padding: 14px; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 2px;
+  }
+  .login-err { color: var(--red); font-size: 13px; margin-top: 10px; text-align: center; }
+  .login-hint { color: var(--muted); font-size: 11px; margin-top: 14px; text-align: center; line-height: 1.6; }
+
+  /* NOTIFICATION badge */
+  .notif-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--red); color: #fff;
+    width: 18px; height: 18px; border-radius: 50%;
+    font-size: 10px; font-weight: 900;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .conn-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .conn-dot.online { background: var(--green); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>MAK BOX POS</h2>
+    <p>Personel Giriş Paneli</p>
+    <input type="text"     id="loginUser" placeholder="Kullanıcı adı">
+    <input type="password" id="loginPass" placeholder="Şifre" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">GİRİŞ YAP</button>
+    <div class="login-err" id="loginErr"></div>
+    <div class="login-hint">
+      Varsayılan: staff / staff123<br>
+      Manager: manager / manager123
+    </div>
+  </div>
+</div>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">MAK BOX POS</div>
+  <div style="display:flex;gap:6px">
+    <button class="topbar-tab active" onclick="switchTab('tables')">🪑 Masalar</button>
+    <button class="topbar-tab" onclick="switchTab('orders')" id="ordersTab">📋 Siparişler</button>
+  </div>
+  <div class="topbar-right">
+    <div class="conn-dot" id="connDot"></div>
+    <div class="topbar-clock" id="clock">--:--</div>
+    <span id="userLabel" style="font-size:12px;color:var(--muted)"></span>
+    <button class="logout-btn" onclick="doLogout()">Çıkış</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <!-- TABLES TAB -->
+  <div class="tab-panel active tables-panel" id="tab-tables">
+    <div class="tables-grid" id="tablesGrid"></div>
+  </div>
+
+  <!-- ORDERS TAB -->
+  <div class="tab-panel orders-panel" id="tab-orders">
+    <div class="orders-list">
+      <div class="orders-list-header">
+        SİPARİŞLER
+        <span id="activeCount" style="color:var(--red);font-size:14px">0</span>
+      </div>
+      <div class="status-filter">
+        <button class="filter-btn active" onclick="setFilter('active')">Aktif</button>
+        <button class="filter-btn" onclick="setFilter('new')">Yeni</button>
+        <button class="filter-btn" onclick="setFilter('preparing')">Hazırl.</button>
+        <button class="filter-btn" onclick="setFilter('ready')">Hazır</button>
+        <button class="filter-btn" onclick="setFilter('paid')">Ödendi</button>
+        <button class="filter-btn" onclick="setFilter('all')">Tümü</button>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+    <div class="order-detail" id="orderDetail">
+      <div class="detail-placeholder">← Bir sipariş seçin</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER = window.location.origin;
+let TOKEN    = sessionStorage.getItem('staff_token') || '';
+let userRole = sessionStorage.getItem('staff_role')  || '';
+let username = sessionStorage.getItem('staff_user')  || '';
+
+let tables     = [];
+let orders     = {};        // id → order
+let selectedId = null;
+let filter     = 'active';
+let socket;
+
+// CLOCK
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
+}, 10000);
+document.getElementById('clock').textContent = new Date().toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
+
+// ── LOGIN ────────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  if (!u || !p) { document.getElementById('loginErr').textContent = 'Kullanıcı adı ve şifre gerekli.'; return; }
+  try {
+    const r = await fetch(`${SERVER}/api/auth/login`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ username: u, password: p }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Giriş başarısız');
+    TOKEN = data.token; userRole = data.role; username = data.username;
+    sessionStorage.setItem('staff_token', TOKEN);
+    sessionStorage.setItem('staff_role',  userRole);
+    sessionStorage.setItem('staff_user',  username);
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('userLabel').textContent = `${username} (${userRole})`;
+    init();
+  } catch(e) { document.getElementById('loginErr').textContent = e.message; }
+}
+
+function doLogout() {
+  sessionStorage.clear();
+  location.reload();
+}
+
+if (TOKEN) {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('userLabel').textContent = `${username} (${userRole})`;
+  init();
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function init() {
+  await Promise.all([loadTables(), loadOrders()]);
+  initSocket();
+}
+
+async function loadTables() {
+  const r = await fetch(`${SERVER}/api/tables`);
+  tables = await r.json();
+  renderTables();
+}
+
+async function loadOrders() {
+  const r = await fetch(`${SERVER}/api/orders?limit=200`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  const data = await r.json();
+  orders = {};
+  (data.orders || []).forEach(o => { orders[o.id] = o; });
+  renderOrders();
+  updateOrdersBadge();
+}
+
+function initSocket() {
+  socket = io(SERVER, { query: { role: 'staff' } });
+  socket.on('connect',    () => document.getElementById('connDot').classList.add('online'));
+  socket.on('disconnect', () => document.getElementById('connDot').classList.remove('online'));
+
+  socket.on('init', (d) => {
+    tables = d.tables;
+    d.activeOrders.forEach(o => { orders[o.id] = o; });
+    renderTables(); renderOrders(); updateOrdersBadge();
+  });
+
+  socket.on('order:new', (o) => {
+    orders[o.id] = o;
+    renderTables(); renderOrders(); updateOrdersBadge();
+    showWaiterAlert(`🆕 YENİ SİPARİŞ — Masa ${o.tableId}`);
+  });
+
+  socket.on('order:update', (o) => {
+    orders[o.id] = o;
+    renderOrders(); updateOrdersBadge();
+    if (selectedId === o.id) renderDetail(o);
+  });
+
+  socket.on('table:update', (t) => {
+    const idx = tables.findIndex(x => x.id === t.id);
+    if (idx !== -1) tables[idx] = t; else tables.push(t);
+    renderTables();
+  });
+
+  socket.on('call:waiter', ({ tableId }) => {
+    showWaiterAlert(`🔔 GARSON ÇAĞRISI — Masa ${tableId}`);
+  });
+}
+
+// ── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.topbar-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+// ── TABLES ───────────────────────────────────────────────────────────────────
+function renderTables() {
+  const grid = document.getElementById('tablesGrid');
+  grid.innerHTML = tables.map(t => {
+    const activeOrders = Object.values(orders).filter(o => o.tableId === t.id && o.status !== 'paid' && o.status !== 'cancelled');
+    const tableTotal   = activeOrders.reduce((s, o) => s + o.total, 0);
+    const statusLabel  = t.status === 'free' ? 'BOŞ' : t.status === 'occupied' ? 'DOLU' : 'HESAP!';
+    return `
+    <div class="table-card ${t.status}" onclick="openTable(${t.id})">
+      <div class="table-num">${t.id}</div>
+      <div class="table-status-badge">${statusLabel}</div>
+      ${activeOrders.length ? `<div class="table-meta">${activeOrders.length} sipariş</div>` : '<div class="table-meta">—</div>'}
+      ${tableTotal ? `<div class="table-total">${tableTotal} ₺</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function openTable(tableId) {
+  // Switch to orders tab filtered by table
+  const tableOrders = Object.values(orders).filter(o => o.tableId === tableId && o.status !== 'paid' && o.status !== 'cancelled');
+  if (tableOrders.length === 1) {
+    switchTabDirect('orders');
+    setFilter('active');
+    selectOrder(tableOrders[0].id);
+  } else if (tableOrders.length > 1) {
+    switchTabDirect('orders');
+    setFilter('active');
+  } else {
+    // Prompt close table?
+    if (confirm(`Masa ${tableId} kapatılsın mı?`)) closeTable(tableId);
+  }
+}
+
+function switchTabDirect(tab) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.topbar-tab').forEach(b => b.classList.remove('active'));
+  document.getElementById(`tab-${tab}`).classList.add('active');
+  const btns = document.querySelectorAll('.topbar-tab');
+  btns.forEach(b => { if (b.textContent.includes('Sipari')) b.classList.add('active'); });
+}
+
+// ── ORDERS LIST ───────────────────────────────────────────────────────────────
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderOrders();
+}
+
+function renderOrders() {
+  let list = Object.values(orders);
+  if      (filter === 'active')   list = list.filter(o => !['paid','cancelled'].includes(o.status));
+  else if (filter !== 'all')      list = list.filter(o => o.status === filter);
+  list.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  document.getElementById('activeCount').textContent = list.length;
+  document.getElementById('ordersList').innerHTML = list.map(o => `
+    <div class="order-row ${selectedId === o.id ? 'selected' : ''}" onclick="selectOrder('${o.id}')">
+      <div class="order-row-top">
+        <div class="order-row-table">MASA ${o.tableId}</div>
+        <div class="order-row-status status-${o.status}">${statusLabel(o.status)}</div>
+      </div>
+      <div class="order-row-id">${o.id.slice(-12)}</div>
+      <div class="order-row-meta">
+        <span>${new Date(o.createdAt).toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'})}</span>
+        <span class="order-row-total">${o.total} ₺</span>
+      </div>
+    </div>`).join('') || '<div style="padding:20px;color:var(--muted);text-align:center;font-size:13px">Sipariş yok</div>';
+}
+
+function statusLabel(s) {
+  return { new:'YENİ', preparing:'HAZIRLANIYOR', ready:'HAZIR', paid:'ÖDENDİ', cancelled:'İPTAL' }[s] || s;
+}
+
+function selectOrder(id) {
+  selectedId = id;
+  renderOrders();
+  renderDetail(orders[id]);
+}
+
+function updateOrdersBadge() {
+  const newCount = Object.values(orders).filter(o => o.status === 'new').length;
+  const tab = document.getElementById('ordersTab');
+  const existing = tab.querySelector('.notif-badge');
+  if (existing) existing.remove();
+  if (newCount > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'notif-badge';
+    badge.textContent = newCount;
+    tab.appendChild(badge);
+  }
+}
+
+// ── ORDER DETAIL ──────────────────────────────────────────────────────────────
+function renderDetail(o) {
+  if (!o) return;
+  const detail = document.getElementById('orderDetail');
+  detail.innerHTML = `
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">MASA ${o.tableId}</div>
+        <div class="detail-sub">${o.id} · ${new Date(o.createdAt).toLocaleString('tr-TR')}</div>
+      </div>
+      <div class="order-row-status status-${o.status}" style="font-size:13px;padding:6px 14px">${statusLabel(o.status)}</div>
+    </div>
+    <div class="detail-items">
+      ${o.items.map(item => `
+        <div class="detail-item">
+          <div class="di-qty">${item.quantity}×</div>
+          <div class="di-info">
+            <div class="di-name">${item.itemName || item.name}</div>
+            ${item.sizeLabel ? `<div class="di-size">${item.sizeLabel}</div>` : ''}
+            ${item.extrasDetail?.length ? `<div class="di-extras">+ ${item.extrasDetail.map(e=>e.name).join(', ')}</div>` : ''}
+            ${item.note ? `<div class="di-note">📝 ${item.note}</div>` : ''}
+          </div>
+          <div class="di-price">${item.lineTotal || (item.unitPrice * item.quantity)} ₺</div>
+        </div>`).join('')}
+    </div>
+    ${o.note ? `<div class="detail-note-block">📋 ${o.note}</div>` : ''}
+    <div class="detail-total-row">
+      <div class="detail-total-label">TOPLAM</div>
+      <div class="detail-total-val">${o.total} ₺</div>
+    </div>
+    <div class="detail-actions">
+      ${o.status === 'new'       ? `<button class="action-btn btn-prep"  onclick="updateStatus('${o.id}','preparing')">🔥 HAZIRLANIYOR</button>` : ''}
+      ${o.status === 'preparing' ? `<button class="action-btn btn-ready" onclick="updateStatus('${o.id}','ready')">✅ HAZIR</button>` : ''}
+      ${o.status === 'ready'     ? `<button class="action-btn btn-paid"  onclick="updateStatus('${o.id}','paid')">💳 ÖDENDİ</button>` : ''}
+      <button class="action-btn btn-print" onclick="printOrder('${o.id}')">🖨️ YAZDIR</button>
+      <button class="action-btn btn-call"  onclick="closeTable(${o.tableId})">🚪 MASA KAPAT</button>
+    </div>
+  `;
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────────────────────
+async function updateStatus(orderId, status) {
+  try {
+    const r = await fetch(`${SERVER}/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    const order = await r.json();
+    orders[orderId] = order;
+    renderOrders(); updateOrdersBadge(); renderDetail(order);
+    renderTables();
+  } catch(e) { alert(e.message); }
+}
+
+async function printOrder(orderId) {
+  try {
+    const r = await fetch(`${SERVER}/api/orders/${orderId}/print`, {
+      method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    const { receipt } = await r.json();
+    const win = window.open('', '', 'width=400,height=600');
+    win.document.write(`<pre style="font-family:monospace;font-size:14px;padding:20px">${receipt}</pre>`);
+    win.print();
+  } catch(e) { alert('Yazdırma hatası: ' + e.message); }
+}
+
+async function closeTable(tableId) {
+  if (!confirm(`Masa ${tableId} kapatılsın mı? Tüm siparişler ödendi olarak işaretlenecek.`)) return;
+  try {
+    const r = await fetch(`${SERVER}/api/tables/${tableId}/close`, {
+      method: 'POST', headers: { Authorization: `Bearer ${TOKEN}` },
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    await loadTables(); await loadOrders();
+  } catch(e) { alert(e.message); }
+}
+
+// ── WAITER ALERT ──────────────────────────────────────────────────────────────
+function showWaiterAlert(msg) {
+  const el = document.createElement('div');
+  el.className = 'waiter-alert';
+  el.textContent = msg;
+  el.onclick = () => el.remove();
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(); const g = ctx.createGain();
+    osc.connect(g); g.connect(ctx.destination);
+    osc.frequency.value = 880; g.gain.setValueAtTime(0.4, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+    osc.start(); osc.stop(ctx.currentTime + 0.6);
+  } catch(e) {}
+}
+
+// ── SERVICE WORKER ──────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' });
+    } catch(e) { console.warn('[SW]', e.message); }
+  });
+}
+</script>
+</body>
+</html>

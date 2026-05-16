@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAK BOX — Mutfak Ekranı</title>
+<!-- PWA -->
+<link rel="manifest" href="/pwa/manifest-kitchen.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAK Mutfak">
+<meta name="theme-color" content="#E53935">
+<link rel="apple-touch-icon" href="/pwa/icons/icon-192.png">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=JetBrains+Mono:wght@700&family=Nunito:wght@700;800;900&display=swap');
+
+  :root {
+    --bg:     #0a0a0a;
+    --card:   #141414;
+    --border: #222;
+    --red:    #E53935;
+    --orange: #FF6F00;
+    --green:  #00C853;
+    --gold:   #FFD600;
+    --text:   #f5f5f5;
+    --muted:  #666;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  .kds-header {
+    background: var(--card);
+    border-bottom: 3px solid var(--red);
+    padding: 12px 24px;
+    display: flex; align-items: center; justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .kds-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px; letter-spacing: 3px; color: var(--red);
+  }
+  .kds-clock {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px; color: var(--gold);
+  }
+  .kds-stats {
+    display: flex; gap: 20px;
+  }
+  .kds-stat {
+    text-align: center;
+    padding: 4px 14px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 8px;
+  }
+  .kds-stat .label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .kds-stat .val   { font-size: 18px; font-weight: 900; }
+  .stat-new { color: var(--red); }
+  .stat-prep { color: var(--orange); }
+  .stat-ready { color: var(--green); }
+
+  /* ORDER GRID */
+  .kds-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+    padding: 16px;
+    overflow-y: auto;
+    align-content: start;
+  }
+
+  /* ORDER CARD */
+  .order-card {
+    background: var(--card);
+    border-radius: 12px;
+    border: 3px solid var(--border);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    animation: slideIn .3s ease;
+  }
+  @keyframes slideIn {
+    from { transform: translateY(-20px); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+  }
+
+  .order-card.status-new      { border-color: var(--red); }
+  .order-card.status-preparing { border-color: var(--orange); }
+  .order-card.status-ready    { border-color: var(--green); opacity: .6; }
+
+  .order-header {
+    padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .order-card.status-new      .order-header { background: rgba(229,57,53,0.2); }
+  .order-card.status-preparing .order-header { background: rgba(255,111,0,0.2); }
+  .order-card.status-ready    .order-header { background: rgba(0,200,83,0.15); }
+
+  .order-table {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px; letter-spacing: 1px;
+  }
+  .order-id {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px; color: var(--muted);
+  }
+  .order-time {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; color: var(--gold); font-weight: 700;
+  }
+  .order-elapsed {
+    font-size: 11px; color: var(--muted);
+    margin-top: 2px; text-align: right;
+  }
+  .order-elapsed.warn { color: var(--orange); }
+  .order-elapsed.late { color: var(--red); }
+
+  .order-body { padding: 12px 14px; flex: 1; }
+
+  .order-item {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .order-item:last-child { border-bottom: none; }
+  .order-item-top {
+    display: flex; gap: 10px; align-items: baseline;
+  }
+  .order-item-qty {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px; color: var(--gold); min-width: 28px;
+  }
+  .order-item-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px; letter-spacing: 0.5px; flex: 1;
+    line-height: 1.1;
+  }
+  .order-item-size {
+    font-size: 11px; background: rgba(255,255,255,0.1);
+    padding: 2px 8px; border-radius: 20px; font-weight: 700;
+    white-space: nowrap;
+  }
+  .order-item-extras {
+    margin-top: 4px; padding-left: 38px;
+    font-size: 11px; color: var(--muted);
+  }
+  .order-item-note {
+    margin-top: 3px; padding-left: 38px;
+    font-size: 11px; color: var(--orange);
+  }
+
+  .order-note-global {
+    margin-top: 8px;
+    padding: 6px 10px;
+    background: rgba(255,111,0,0.1);
+    border-radius: 6px;
+    border-left: 3px solid var(--orange);
+    font-size: 12px; color: var(--orange);
+    font-weight: 700;
+  }
+
+  .order-footer { padding: 10px 14px; display: flex; gap: 8px; }
+
+  .kds-btn {
+    flex: 1;
+    border: none; border-radius: 8px;
+    padding: 10px;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 16px; letter-spacing: 1px;
+    cursor: pointer;
+    transition: transform .1s, opacity .2s;
+  }
+  .kds-btn:active { transform: scale(.96); }
+  .btn-prepare { background: var(--orange); color: #000; }
+  .btn-ready   { background: var(--green);  color: #000; }
+  .btn-done    { background: var(--muted);  color: #fff; font-size: 13px; }
+
+  .empty-state {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 80px 40px;
+    color: var(--muted);
+  }
+  .empty-state p { font-size: 18px; margin-top: 12px; font-weight: 700; }
+
+  /* Audio ping indicator */
+  .ping-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; } 50% { opacity:.3; }
+  }
+
+  /* Login overlay */
+  .login-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 999;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .login-box {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 40px;
+    width: 340px;
+    text-align: center;
+  }
+  .login-box h2 { font-family: 'Bebas Neue', sans-serif; font-size: 28px; margin-bottom: 24px; color: var(--red); }
+  .login-box input {
+    width: 100%; background: #0a0a0a; border: 2px solid var(--border);
+    border-radius: 8px; padding: 12px; color: var(--text);
+    font-size: 14px; margin-bottom: 12px;
+    font-family: 'Nunito', sans-serif;
+  }
+  .login-box input:focus { outline: none; border-color: var(--red); }
+  .login-box button {
+    width: 100%; background: var(--red); color: #fff; border: none;
+    border-radius: 8px; padding: 14px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 20px;
+    cursor: pointer; letter-spacing: 2px;
+  }
+  .login-err { color: var(--red); font-size: 13px; margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-overlay" id="loginOverlay">
+  <div class="login-box">
+    <h2>🍳 MUTFAK GİRİŞİ</h2>
+    <input type="text"     id="loginUser" placeholder="Kullanıcı adı" value="staff">
+    <input type="password" id="loginPass" placeholder="Şifre" value="">
+    <button onclick="doLogin()">GİRİŞ YAP</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- KDS -->
+<div class="kds-header">
+  <div>
+    <div class="kds-title">🍳 MAK BOX MUTFAK</div>
+  </div>
+  <div class="kds-stats">
+    <div class="kds-stat"><div class="label">Yeni</div><div class="val stat-new" id="statNew">0</div></div>
+    <div class="kds-stat"><div class="label">Hazırlanıyor</div><div class="val stat-prep" id="statPrep">0</div></div>
+    <div class="kds-stat"><div class="label">Hazır</div><div class="val stat-ready" id="statReady">0</div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="ping-dot" id="pingDot" style="background:var(--muted)"></div>
+    <div class="kds-clock" id="clock">--:--:--</div>
+  </div>
+</div>
+
+<div class="kds-grid" id="kdsGrid">
+  <div class="empty-state"><div style="font-size:60px">✅</div><p>Tüm siparişler hazır!</p></div>
+</div>
+
+<script>
+const SERVER = window.location.origin;
+let TOKEN = sessionStorage.getItem('kds_token') || '';
+let orders = {};
+let pingInterval;
+
+// Clock
+setInterval(() => {
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('tr-TR');
+}, 1000);
+
+async function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  try {
+    const r = await fetch(`${SERVER}/api/auth/login`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: u, password: p }),
+    });
+    if (!r.ok) throw new Error((await r.json()).error);
+    const data = await r.json();
+    TOKEN = data.token;
+    sessionStorage.setItem('kds_token', TOKEN);
+    document.getElementById('loginOverlay').style.display = 'none';
+    initSocket();
+    loadActive();
+  } catch(e) {
+    document.getElementById('loginErr').textContent = e.message;
+  }
+}
+
+if (TOKEN) {
+  document.getElementById('loginOverlay').style.display = 'none';
+  initSocket();
+  loadActive();
+}
+
+async function loadActive() {
+  try {
+    const r = await fetch(`${SERVER}/api/orders/active`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const data = await r.json();
+    orders = {};
+    data.forEach(o => { if (o.status !== 'paid' && o.status !== 'cancelled') orders[o.id] = o; });
+    renderAll();
+  } catch(e) { console.error(e); }
+}
+
+function initSocket() {
+  const socket = io(SERVER, { query: { role: 'kitchen' } });
+  socket.on('connect', () => {
+    document.getElementById('pingDot').style.background = 'var(--green)';
+  });
+  socket.on('disconnect', () => {
+    document.getElementById('pingDot').style.background = 'var(--red)';
+  });
+  socket.on('order:new', (o) => {
+    orders[o.id] = o;
+    playBeep();
+    renderAll();
+  });
+  socket.on('order:update', (o) => {
+    if (o.status === 'paid' || o.status === 'cancelled') {
+      delete orders[o.id];
+    } else {
+      orders[o.id] = o;
+    }
+    renderAll();
+  });
+}
+
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [440, 550, 660].forEach((f, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = f;
+      gain.gain.setValueAtTime(0.3, ctx.currentTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 0.2);
+      osc.start(ctx.currentTime + i * 0.15);
+      osc.stop(ctx.currentTime + i * 0.15 + 0.2);
+    });
+  } catch(e) {}
+}
+
+function elapsed(createdAt) {
+  const ms = Date.now() - new Date(createdAt).getTime();
+  const min = Math.floor(ms / 60000);
+  const sec = Math.floor((ms % 60000) / 1000);
+  return { min, label: `${min}:${String(sec).padStart(2,'0')}`, warn: min >= 10, late: min >= 20 };
+}
+
+function renderAll() {
+  const active = Object.values(orders)
+    .filter(o => o.status === 'new' || o.status === 'preparing' || o.status === 'ready')
+    .sort((a,b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  const statNew   = active.filter(o => o.status === 'new').length;
+  const statPrep  = active.filter(o => o.status === 'preparing').length;
+  const statReady = active.filter(o => o.status === 'ready').length;
+  document.getElementById('statNew').textContent   = statNew;
+  document.getElementById('statPrep').textContent  = statPrep;
+  document.getElementById('statReady').textContent = statReady;
+
+  const grid = document.getElementById('kdsGrid');
+  if (active.length === 0) {
+    grid.innerHTML = '<div class="empty-state"><div style="font-size:60px">✅</div><p>Tüm siparişler tamam!</p></div>';
+    return;
+  }
+
+  grid.innerHTML = active.map(o => {
+    const el = elapsed(o.createdAt);
+    const elClass = el.late ? 'late' : el.warn ? 'warn' : '';
+    return `
+    <div class="order-card status-${o.status}" id="card-${o.id}">
+      <div class="order-header">
+        <div>
+          <div class="order-table">MASA ${o.tableId}</div>
+          <div class="order-id">${o.id.slice(-8)}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="order-time">${new Date(o.createdAt).toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'})}</div>
+          <div class="order-elapsed ${elClass}">${el.label} dk geçti</div>
+        </div>
+      </div>
+      <div class="order-body">
+        ${o.items.map(item => `
+          <div class="order-item">
+            <div class="order-item-top">
+              <div class="order-item-qty">${item.quantity}×</div>
+              <div class="order-item-name">${item.itemName || item.name}</div>
+              ${item.sizeLabel ? `<div class="order-item-size">${item.sizeLabel}</div>` : ''}
+            </div>
+            ${item.extrasDetail?.length ? `<div class="order-item-extras">+ ${item.extrasDetail.map(e=>e.name).join(' · ')}</div>` : ''}
+            ${item.note ? `<div class="order-item-note">📝 ${item.note}</div>` : ''}
+          </div>`).join('')}
+        ${o.note ? `<div class="order-note-global">📋 ${o.note}</div>` : ''}
+      </div>
+      <div class="order-footer">
+        ${o.status === 'new'       ? `<button class="kds-btn btn-prepare" onclick="updateStatus('${o.id}','preparing')">🔥 HAZIRLANIYOR</button>` : ''}
+        ${o.status === 'preparing' ? `<button class="kds-btn btn-ready" onclick="updateStatus('${o.id}','ready')">✅ HAZIR</button>` : ''}
+        ${o.status === 'ready'     ? `<button class="kds-btn btn-done" onclick="updateStatus('${o.id}','paid')">📤 TESLİM</button>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Re-render elapsed every 30s
+  clearInterval(pingInterval);
+  pingInterval = setInterval(() => renderAll(), 30000);
+}
+
+async function updateStatus(orderId, status) {
+  try {
+    const r = await fetch(`${SERVER}/api/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) throw new Error('Güncellenemedi');
+    const order = await r.json();
+    if (status === 'paid') delete orders[orderId];
+    else orders[orderId] = order;
+    renderAll();
+  } catch(e) { alert(e.message); }
+}
+
+// ── SERVICE WORKER ──────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' });
+    } catch(e) { console.warn('[SW]', e.message); }
+  });
+}
+</script>
+</body>
+</html>

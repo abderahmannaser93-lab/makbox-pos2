@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MAK BOX — Manager</title>
+<!-- PWA -->
+<link rel="manifest" href="/pwa/manifest-manager.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MAK Yönetici">
+<meta name="theme-color" content="#E53935">
+<link rel="apple-touch-icon" href="/pwa/icons/icon-192.png">
+<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Nunito:wght@400;600;700;800;900&display=swap');
+  :root {
+    --bg:#0d0d0d;--card:#161616;--border:#242424;
+    --red:#E53935;--orange:#FF6F00;--green:#00C853;--gold:#FFD600;--blue:#2196F3;
+    --text:#f0f0f0;--muted:#666;--radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+
+  /* LOGIN */
+  .login-screen{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;align-items:center;justify-content:center;}
+  .login-box{background:var(--card);border:2px solid var(--border);border-radius:16px;padding:40px;width:340px;text-align:center;}
+  .login-box h2{font-family:'Bebas Neue',sans-serif;font-size:26px;color:var(--red);margin-bottom:20px;}
+  .login-box input{width:100%;background:#0a0a0a;border:2px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:14px;margin-bottom:10px;font-family:'Nunito',sans-serif;}
+  .login-box input:focus{outline:none;border-color:var(--red);}
+  .login-box button{width:100%;background:var(--red);color:#fff;border:none;border-radius:8px;padding:14px;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;}
+  .login-err{color:var(--red);font-size:12px;margin-top:10px;}
+
+  /* HEADER */
+  .header{background:var(--card);border-bottom:3px solid var(--red);padding:14px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .header-logo{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--red);}
+  .header-date{font-size:12px;color:var(--muted);}
+  .refresh-btn{background:var(--border);border:none;border-radius:20px;padding:7px 16px;color:var(--text);font-size:12px;cursor:pointer;font-weight:700;}
+  .logout-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;font-weight:700;padding:4px 8px;}
+
+  /* CONTENT */
+  .content{padding:20px;max-width:900px;margin:0 auto;display:flex;flex-direction:column;gap:20px;}
+
+  /* DATE PICKER */
+  .date-row{display:flex;gap:8px;align-items:center;}
+  .date-input{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:8px 14px;color:var(--text);font-size:14px;font-family:'Nunito',sans-serif;}
+  .date-input:focus{outline:none;border-color:var(--red);}
+  .date-btn{background:var(--red);color:#fff;border:none;border-radius:var(--radius);padding:8px 20px;font-weight:800;cursor:pointer;}
+
+  /* KPI CARDS */
+  .kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+  .kpi-card{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);padding:16px;}
+  .kpi-label{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;}
+  .kpi-val{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:1px;}
+  .kpi-sub{font-size:11px;color:var(--muted);margin-top:4px;}
+  .kpi-revenue .kpi-val{color:var(--gold);}
+  .kpi-orders  .kpi-val{color:var(--green);}
+  .kpi-avg     .kpi-val{color:var(--blue);}
+
+  /* SECTION */
+  .section{background:var(--card);border:2px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+  .section-header{padding:14px 16px;border-bottom:2px solid var(--border);font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--muted);}
+
+  /* TOP ITEMS */
+  .top-item{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);}
+  .top-item:last-child{border-bottom:none;}
+  .top-rank{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--muted);min-width:28px;}
+  .top-rank.gold{color:var(--gold);}
+  .top-rank.silver{color:#aaa;}
+  .top-rank.bronze{color:#cd7f32;}
+  .top-name{flex:1;font-weight:800;font-size:13px;}
+  .top-count{font-size:13px;color:var(--muted);}
+  .top-bar-wrap{flex:1;background:var(--border);border-radius:4px;height:6px;overflow:hidden;}
+  .top-bar-fill{height:100%;background:var(--red);border-radius:4px;transition:width .5s ease;}
+
+  /* PEAK HOURS */
+  .hours-grid{display:flex;gap:8px;padding:16px;align-items:flex-end;height:120px;}
+  .hour-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .hour-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;}
+  .hour-bar{width:100%;background:var(--red);border-radius:4px 4px 0 0;transition:height .5s ease;min-height:4px;}
+  .hour-label{font-size:9px;color:var(--muted);font-weight:800;}
+  .hour-count{font-size:10px;color:var(--text);font-weight:800;}
+
+  /* 7-DAY CHART */
+  .week-chart{padding:16px;display:flex;gap:8px;align-items:flex-end;height:140px;}
+  .day-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .day-bar-wrap{flex:1;width:100%;display:flex;align-items:flex-end;}
+  .day-bar{width:100%;background:var(--orange);border-radius:4px 4px 0 0;transition:height .5s ease;min-height:4px;}
+  .day-label{font-size:9px;color:var(--muted);font-weight:800;text-align:center;}
+  .day-val{font-size:9px;color:var(--text);font-weight:800;}
+
+  /* LIVE INDICATOR */
+  .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--green);margin-right:6px;animation:blink 1.5s infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  .empty-msg{padding:30px;text-align:center;color:var(--muted);font-size:14px;}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <h2>MANAGER PANELİ</h2>
+    <input type="text" id="lu" placeholder="Kullanıcı adı" value="manager">
+    <input type="password" id="lp" placeholder="Şifre" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">GİRİŞ YAP</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="header-logo">MAK BOX — MANAGER</div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="refresh-btn" onclick="loadAll()">↻ Yenile</button>
+    <button class="logout-btn" onclick="doLogout()">Çıkış</button>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- DATE PICKER -->
+  <div class="date-row">
+    <input type="date" id="dateInput" class="date-input">
+    <button class="date-btn" onclick="loadAll()">GÖR</button>
+    <span style="font-size:12px;color:var(--muted)"><span class="live-dot"></span>Canlı güncelleme aktif</span>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid">
+    <div class="kpi-card kpi-revenue">
+      <div class="kpi-label">Günlük Ciro</div>
+      <div class="kpi-val" id="kpiRevenue">—</div>
+      <div class="kpi-sub">Türk Lirası</div>
+    </div>
+    <div class="kpi-card kpi-orders">
+      <div class="kpi-label">Sipariş Sayısı</div>
+      <div class="kpi-val" id="kpiOrders">—</div>
+      <div class="kpi-sub">Toplam sipariş</div>
+    </div>
+    <div class="kpi-card kpi-avg">
+      <div class="kpi-label">Ortalama Adisyon</div>
+      <div class="kpi-val" id="kpiAvg">—</div>
+      <div class="kpi-sub">Sipariş başına</div>
+    </div>
+  </div>
+
+  <!-- TOP ITEMS -->
+  <div class="section">
+    <div class="section-header">🏆 EN ÇOK SATANLAR</div>
+    <div id="topItems"><div class="empty-msg">Veri yükleniyor...</div></div>
+  </div>
+
+  <!-- PEAK HOURS -->
+  <div class="section">
+    <div class="section-header">🕐 YOĞUN SAATLER</div>
+    <div id="peakHours" class="hours-grid"></div>
+  </div>
+
+  <!-- 7-DAY CHART -->
+  <div class="section">
+    <div class="section-header">📈 SON 7 GÜN — CİRO</div>
+    <div id="weekChart" class="week-chart"></div>
+  </div>
+
+</div>
+
+<script>
+const SERVER = window.location.origin;
+let TOKEN = sessionStorage.getItem('mgr_token') || '';
+let socket;
+
+// Date init
+const today = new Date().toISOString().slice(0,10);
+document.getElementById('dateInput').value = today;
+document.getElementById('headerDate').textContent = new Date().toLocaleDateString('tr-TR', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+
+async function doLogin() {
+  const u = document.getElementById('lu').value;
+  const p = document.getElementById('lp').value;
+  try {
+    const r = await fetch(`${SERVER}/api/auth/login`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ username:u, password:p }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'Hata');
+    if (!['manager','admin'].includes(data.role)) throw new Error('Bu panel sadece manager/admin içindir.');
+    TOKEN = data.token;
+    sessionStorage.setItem('mgr_token', TOKEN);
+    document.getElementById('loginScreen').style.display = 'none';
+    initSocket();
+    loadAll();
+  } catch(e) { document.getElementById('loginErr').textContent = e.message; }
+}
+
+function doLogout() { sessionStorage.clear(); location.reload(); }
+
+if (TOKEN) {
+  document.getElementById('loginScreen').style.display = 'none';
+  initSocket();
+  loadAll();
+}
+
+function initSocket() {
+  socket = io(SERVER, { query: { role: 'manager' } });
+  socket.on('order:new',    () => loadAll());
+  socket.on('order:update', () => loadAll());
+}
+
+async function loadAll() {
+  const date = document.getElementById('dateInput').value;
+  await Promise.all([loadDaily(date), loadWeek()]);
+}
+
+async function loadDaily(date) {
+  try {
+    const r = await fetch(`${SERVER}/api/reports/daily?date=${date}`, {
+      headers: { Authorization: `Bearer ${TOKEN}` }
+    });
+    const d = await r.json();
+
+    document.getElementById('kpiRevenue').textContent = d.revenue.toLocaleString('tr-TR') + ' ₺';
+    document.getElementById('kpiOrders').textContent  = d.orders;
+    document.getElementById('kpiAvg').textContent     = d.avgBill.toLocaleString('tr-TR') + ' ₺';
+
+    renderTopItems(d.topItems || []);
+    renderPeakHours(d.peakHours || []);
+  } catch(e) { console.error(e); }
+}
+
+function renderTopItems(items) {
+  if (!items.length) { document.getElementById('topItems').innerHTML = '<div class="empty-msg">Henüz satış yok.</div>'; return; }
+  const max = items[0]?.count || 1;
+  document.getElementById('topItems').innerHTML = items.map((it, i) => {
+    const rankClass = i===0?'gold':i===1?'silver':i===2?'bronze':'';
+    const pct = Math.round((it.count / max) * 100);
+    return `
+    <div class="top-item">
+      <div class="top-rank ${rankClass}">#${i+1}</div>
+      <div class="top-name">${it.name}</div>
+      <div class="top-bar-wrap"><div class="top-bar-fill" style="width:${pct}%"></div></div>
+      <div class="top-count">${it.count} adet</div>
+    </div>`;
+  }).join('');
+}
+
+function renderPeakHours(hours) {
+  if (!hours.length) { document.getElementById('peakHours').innerHTML = '<div class="empty-msg" style="padding:16px">Veri yok.</div>'; return; }
+  const max = Math.max(...hours.map(h => h.count), 1);
+  const allHours = Array.from({length:16}, (_,i) => i+8); // 08:00-23:00
+  document.getElementById('peakHours').innerHTML = allHours.map(h => {
+    const found = hours.find(x => x.hour === h);
+    const count = found?.count || 0;
+    const pct   = Math.round((count / max) * 100);
+    return `
+    <div class="hour-col">
+      <div class="hour-count" style="font-size:8px;color:var(--muted)">${count||''}</div>
+      <div class="hour-bar-wrap"><div class="hour-bar" style="height:${Math.max(pct,4)}%"></div></div>
+      <div class="hour-label">${h}:00</div>
+    </div>`;
+  }).join('');
+}
+
+async function loadWeek() {
+  try {
+    const r = await fetch(`${SERVER}/api/reports/summary`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    const d = await r.json();
+    const days = d.days || [];
+    const max  = Math.max(...days.map(x=>x.revenue), 1);
+    document.getElementById('weekChart').innerHTML = days.map(day => {
+      const pct = Math.round((day.revenue / max) * 100);
+      const label = new Date(day.date).toLocaleDateString('tr-TR', {weekday:'short'});
+      return `
+      <div class="day-col">
+        <div class="day-val">${day.revenue ? (day.revenue/1000).toFixed(1)+'k' : ''}</div>
+        <div class="day-bar-wrap"><div class="day-bar" style="height:${Math.max(pct,4)}%"></div></div>
+        <div class="day-label">${label}</div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+// ── SERVICE WORKER ──────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      await navigator.serviceWorker.register('/pwa/sw.js', { scope: '/' });
+    } catch(e) { console.warn('[SW]', e.message); }
+  });
+}
+</script>
+</body>
+</html>
